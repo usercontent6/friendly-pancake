@@ -17,9 +17,9 @@ jobs:
     timeout-minutes: 360
 
     env:
-      DATABASE_URL: \${{ secrets.DATABASE_URL }}
-      PAGES_BASE_URL: \${{ vars.PAGES_BASE_URL }}
-      VIDEO_BASE_URL: \${{ vars.VIDEO_BASE_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PAGES_BASE_URL: ${{ vars.PAGES_BASE_URL }}
+      VIDEO_BASE_URL: ${{ vars.VIDEO_BASE_URL }}
       FRAME_MANIFEST: /tmp/frame_manifest.json
 
     steps:
@@ -28,13 +28,6 @@ jobs:
         with:
           ref: main
           persist-credentials: true
-
-      - name: Confirm the workflow is running for main
-        run: |
-          if [ "\${GITHUB_REF_NAME}" != "main" ]; then
-            echo "Run this workflow from the main branch."
-            exit 1
-          fi
 
       - name: Install FFmpeg
         run: |
