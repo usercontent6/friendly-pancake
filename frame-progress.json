@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:48:35.550147+00:00",
+  "updated_at": "2026-11-18T08:49:04.281875+00:00",
   "total_rows": 1903,
   "next_index": 1710,
   "batches_completed": 35,
-  "generated": 1534,
+  "generated": 1580,
   "resumed": 0,
   "video_failures": [
     {
@@ -1063,6 +1063,30 @@
       "stage": "source",
       "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
       "recorded_at": "2026-11-18T08:46:41.584157+00:00"
+    },
+    {
+      "post_id": "6d013c3f-bb34-4332-a131-63a511b3a5c1",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:48:38.940937+00:00"
+    },
+    {
+      "post_id": "2691746e-2dc7-4d13-a469-013c1dfcf983",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:48:56.164649+00:00"
+    },
+    {
+      "post_id": "40d5e250-ebee-47e7-a437-2269833a5d56",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:49:02.363290+00:00"
+    },
+    {
+      "post_id": "4271c1c3-db89-4d42-a9c2-92bed2feb091",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:49:02.848630+00:00"
     }
   ],
   "history": [
