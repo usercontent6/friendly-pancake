@@ -165,42 +165,78 @@ def probe_duration(source: str) -> float | None:
         return None
 
 
+def classify_media_error(stderr: str, returncode: int) -> str:
+    """Return a safe diagnostic without logging a video URL or query string."""
+    message = (stderr or "").lower()
+    match = re.search(r"(?:http error|server returned)\s*[: ]?\s*(\d{3})", message)
+    if match:
+        status = int(match.group(1))
+        if status in (401, 403):
+            return f"Video host returned HTTP {status}; access may be denied or the signed URL may have expired."
+        if status == 404:
+            return "Video host returned HTTP 404; source file was not found."
+        if status == 429:
+            return "Video host returned HTTP 429; request was rate limited."
+        if status >= 500:
+            return f"Video host returned HTTP {status}; server-side error."
+        return f"Video host returned HTTP {status}."
+    if "moov atom not found" in message:
+        return "MP4 metadata is missing; file may be incomplete or invalid."
+    if "invalid data found" in message or "could not find codec parameters" in message:
+        return "FFmpeg could not recognize or decode the video stream."
+    if "connection timed out" in message or "operation timed out" in message:
+        return "Video host timed out while FFmpeg read the source."
+    if "network is unreachable" in message or "connection refused" in message:
+        return "Video host could not be reached from the GitHub runner."
+    if "end of file" in message:
+        return "Source ended before FFmpeg could read the midpoint frame."
+    return f"FFmpeg exited with code {returncode}; raw output suppressed to protect signed video URLs."
+
+
 def extract_midpoint(source: str, duration: float, output: Path) -> None:
     midpoint = duration / 2.0
     output.parent.mkdir(parents=True, exist_ok=True)
+    base = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-rw_timeout", "20000000"]
 
-    command = [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel", "error",
-        "-nostdin",
-        "-y",
-        "-ss", f"{midpoint:.3f}",
-        "-i", source,
-        "-map", "0:v:0",
-        "-frames:v", "1",
+    # Fast seek first. Some remote origins do not support HTTP range requests,
+    # so retry once with accurate input-first seeking when the error is not HTTP auth/not-found.
+    fast_command = base + [
+        "-ss", f"{midpoint:.3f}", "-i", source,
+        "-map", "0:v:0", "-frames:v", "1",
         "-vf", f"scale='min({MAX_IMAGE_WIDTH},iw)':-2",
-        "-q:v", "3",
-        "-an",
-        str(output),
+        "-q:v", "3", "-an", str(output),
     ]
-
     try:
-        result = subprocess.run(
-            command,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
+        result = subprocess.run(fast_command, check=False, capture_output=True, text=True, timeout=240)
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError("FFmpeg timed out while seeking to the midpoint") from exc
+        raise RuntimeError("FFmpeg timed out during fast midpoint seek") from exc
     except OSError as exc:
-        raise RuntimeError("FFmpeg could not be started") from exc
+        raise RuntimeError(f"FFmpeg could not start ({type(exc).__name__})") from exc
 
-    if result.returncode != 0 or not output.is_file() or output.stat().st_size == 0:
-        # Do not print FFmpeg stderr: it may contain a signed video URL.
-        raise RuntimeError("FFmpeg could not extract a midpoint frame")
+    if result.returncode == 0 and output.is_file() and output.stat().st_size > 0:
+        return
+
+    fast_error = classify_media_error(result.stderr, result.returncode)
+    if re.search(r"HTTP (401|403|404|429|5\d\d)", fast_error):
+        raise RuntimeError(fast_error)
+
+    output.unlink(missing_ok=True)
+    accurate_command = base + [
+        "-i", source, "-ss", f"{midpoint:.3f}",
+        "-map", "0:v:0", "-frames:v", "1",
+        "-vf", f"scale='min({MAX_IMAGE_WIDTH},iw)':-2",
+        "-q:v", "3", "-an", str(output),
+    ]
+    try:
+        retry = subprocess.run(accurate_command, check=False, capture_output=True, text=True, timeout=360)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("FFmpeg timed out during accurate-seek retry") from exc
+    except OSError as exc:
+        raise RuntimeError(f"FFmpeg retry could not start ({type(exc).__name__})") from exc
+
+    if retry.returncode != 0 or not output.is_file() or output.stat().st_size == 0:
+        retry_error = classify_media_error(retry.stderr, retry.returncode)
+        raise RuntimeError(f"Fast seek: {fast_error} Accurate seek: {retry_error}")
 
 
 def replace_frames_directory(staging_frames: Path) -> None:
