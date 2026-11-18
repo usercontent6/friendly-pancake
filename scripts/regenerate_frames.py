@@ -438,14 +438,23 @@ def prepare_frames() -> bool:
     return report["generated"] > 0
 
 
-def update_database_images() -> None:
+def update_database_images() -> bool:
     path = manifest_path()
     if not path.is_file():
-        raise RuntimeError(f"Frame manifest not found: {path}")
+        raise RuntimeError("Frame manifest is missing.")
 
     entries = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(entries, list) or not entries:
-        raise RuntimeError("Frame manifest is empty or invalid.")
+    if not isinstance(entries, list):
+        raise RuntimeError("Frame manifest is invalid.")
+
+    report = json.loads(REPORT_JSON.read_text(encoding="utf-8")) if REPORT_JSON.is_file() else new_report()
+    if not entries:
+        report["database"]["status"] = "not_started"
+        report["notes"].append("No successful frames were available for database updates.")
+        write_report(report)
+        write_step_summary(report, "Neon image URL updates")
+        LOGGER.warning("DATABASE_UPDATE_SKIPPED no successful frames")
+        return False
 
     seen_ids: set[str] = set()
     for entry in entries:
@@ -461,21 +470,58 @@ def update_database_images() -> None:
         seen_ids.add(post_id)
 
     sql = "UPDATE public.blog_posts SET img = %s WHERE id = %s"
-    with psycopg.connect(
-        require_database_url(),
-        connect_timeout=30,
-        prepare_threshold=None,
-    ) as conn:
-        with conn.cursor() as cur:
-            for entry in entries:
-                cur.execute(sql, (entry["img_url"], entry["id"]))
-                if cur.rowcount != 1:
-                    raise RuntimeError(
-                        f"Expected one updated blog_posts row for {entry['id']}; "
-                        f"updated {cur.rowcount}."
-                    )
+    report["database"]["status"] = "running"
 
-    LOGGER.info("Updated blog_posts.img for %s posts.", len(entries))
+    try:
+        with psycopg.connect(
+            require_database_url(),
+            connect_timeout=30,
+            prepare_threshold=None,
+        ) as conn:
+            with conn.cursor() as cur:
+                for entry in entries:
+                    post_id = entry["id"]
+                    cur.execute("SAVEPOINT frame_img_update")
+                    try:
+                        cur.execute(sql, (entry["img_url"], post_id))
+                        if cur.rowcount != 1:
+                            raise RuntimeError(f"Expected one matching row, updated {cur.rowcount}.")
+                        cur.execute("RELEASE SAVEPOINT frame_img_update")
+                        report["database"]["updated"] += 1
+                    except Exception as exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT frame_img_update")
+                        cur.execute("RELEASE SAVEPOINT frame_img_update")
+                        report["database"]["failed"] += 1
+                        sqlstate = getattr(exc, "sqlstate", None)
+                        reason = f"Database row update failed ({type(exc).__name__}"
+                        if sqlstate:
+                            reason += f", SQLSTATE {sqlstate}"
+                        reason += ")."
+                        add_failure(report, post_id, "database_update", reason, True)
+
+        report["database"]["status"] = "partial" if report["database"]["failed"] else "success"
+
+    except Exception as exc:
+        report["database"]["status"] = "failed"
+        report["database"]["failed"] += max(0, len(entries) - report["database"]["updated"] - report["database"]["failed"])
+        sqlstate = getattr(exc, "sqlstate", None)
+        reason = f"Database connection or transaction failed ({type(exc).__name__}"
+        if sqlstate:
+            reason += f", SQLSTATE {sqlstate}"
+        reason += ")."
+        report["notes"].append(reason)
+        write_report(report)
+        write_step_summary(report, "Neon image URL updates")
+        LOGGER.error("DATABASE_UPDATE_FATAL %s", reason)
+        return False
+
+    write_report(report)
+    write_step_summary(report, "Neon image URL updates")
+    LOGGER.info(
+        "DATABASE_UPDATE_COMPLETE attempted=%s updated=%s failed=%s",
+        len(entries), report["database"]["updated"], report["database"]["failed"],
+    )
+    return report["database"]["failed"] == 0
 
 
 def main() -> None:
