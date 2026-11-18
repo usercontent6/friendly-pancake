@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:31:52.161354+00:00",
+  "updated_at": "2026-11-18T08:32:42.083167+00:00",
   "total_rows": 1903,
   "next_index": 910,
   "batches_completed": 19,
-  "generated": 805,
+  "generated": 846,
   "resumed": 0,
   "video_failures": [
     {
@@ -637,6 +637,60 @@
       "stage": "ffmpeg",
       "reason": "Video host returned HTTP 404; source file was not found.",
       "recorded_at": "2026-11-18T08:31:36.841524+00:00"
+    },
+    {
+      "post_id": "11b05178-e182-43ac-9152-e571fe890fd1",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:31:56.518734+00:00"
+    },
+    {
+      "post_id": "136ffd3b-52ed-427e-b73b-55536010e6dc",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:01.470975+00:00"
+    },
+    {
+      "post_id": "1bfd7853-e1b3-4b48-8c1f-a112c0a4180c",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:05.451845+00:00"
+    },
+    {
+      "post_id": "22fb926d-4a20-4dd5-b657-71e7281f9614",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:07.901851+00:00"
+    },
+    {
+      "post_id": "0901a268-9dcc-4430-8bd7-b83ace62eba4",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:11.904054+00:00"
+    },
+    {
+      "post_id": "2765dd0e-8d30-447b-9fd4-a4caec672d98",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:13.906613+00:00"
+    },
+    {
+      "post_id": "0a1c7475-725f-4456-8426-b398856fe9af",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:30.950608+00:00"
+    },
+    {
+      "post_id": "1bb38296-99ee-47f0-aaad-3937db32982c",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:41.335102+00:00"
+    },
+    {
+      "post_id": "1bb81b31-fab6-401d-9f80-17548e33b63b",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:32:41.499466+00:00"
     }
   ],
   "history": [
