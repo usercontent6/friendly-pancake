@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:21:56.600775+00:00",
+  "updated_at": "2026-11-18T08:23:01.458740+00:00",
   "total_rows": 1903,
   "next_index": 460,
   "batches_completed": 10,
-  "generated": 411,
+  "generated": 458,
   "resumed": 0,
   "video_failures": [
     {
@@ -301,6 +301,24 @@
       "stage": "ffmpeg",
       "reason": "Video host returned HTTP 404; source file was not found.",
       "recorded_at": "2026-11-18T08:21:33.760592+00:00"
+    },
+    {
+      "post_id": "58e4f32a-4d0d-46da-95dc-9da7e973a7b4",
+      "stage": "ffmpeg",
+      "reason": "Fast seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs. Accurate seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs.",
+      "recorded_at": "2026-11-18T08:22:17.054092+00:00"
+    },
+    {
+      "post_id": "1905829d-303d-4348-ad63-b36f158fdc95",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:22:45.818858+00:00"
+    },
+    {
+      "post_id": "11055e7e-34bc-47bb-923d-ccf4ef775936",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:22:50.842680+00:00"
     }
   ],
   "history": [
