@@ -27,6 +27,8 @@ DEFAULT_PAGES_BASE_URL = "https://usercontent6.github.io/friendly-pancake"
 DEFAULT_MANIFEST = Path(tempfile.gettempdir()) / "frame_manifest.json"
 MAX_IMAGES_PER_FOLDER = 100
 MAX_IMAGE_WIDTH = 1280
+CHECKPOINT_BRANCH = "frame-regeneration-progress"
+CHECKPOINT_EVERY_ROWS = 25
 REPORT_DIR = ROOT / "reports"
 REPORT_JSON = REPORT_DIR / "frame-regeneration-report.json"
 REPORT_CSV = REPORT_DIR / "frame-regeneration-errors.csv"
@@ -347,9 +349,107 @@ def write_manifest(entries: list[dict[str, str]]) -> None:
     path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
 
 
+def is_valid_jpeg(path: Path) -> bool:
+    """Basic JPEG integrity check used to decide whether a checkpoint can be resumed."""
+    try:
+        if not path.is_file() or path.stat().st_size < 4:
+            return False
+        with path.open("rb") as handle:
+            start = handle.read(2)
+            handle.seek(-2, os.SEEK_END)
+            end = handle.read(2)
+        return start == b"\xff\xd8" and end == b"\xff\xd9"
+    except OSError:
+        return False
+
+
+def run_git(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    if check and result.returncode != 0:
+        # Git output contains no video source values; it is safe to include the
+        # command result in a workflow diagnostic.
+        detail = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(f"Git command failed ({' '.join(args[:2])}): {detail[-1500:]}")
+    return result
+
+
+def checkpoint_frames(processed_rows: int, *, force: bool = False) -> None:
+    """Commit extracted frame files to a durable remote branch before continuing."""
+    if run_git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip() != CHECKPOINT_BRANCH:
+        raise RuntimeError(
+            f"Expected to run on checkpoint branch '{CHECKPOINT_BRANCH}'."
+        )
+
+    run_git(["add", "--all", "--", "frames"])
+    staged = run_git(["diff", "--cached", "--quiet"], check=False)
+    if staged.returncode == 0 and not force:
+        return
+    if staged.returncode == 0:
+        return
+
+    run_git([
+        "commit",
+        "-m",
+        f"Checkpoint midpoint frames after row {processed_rows}",
+    ])
+
+    # The workflow serializes runs, but retry safely if the remote checkpoint
+    # branch has received another commit between fetch and push.
+    for attempt in range(1, 6):
+        run_git(["fetch", "origin", CHECKPOINT_BRANCH], check=False)
+        remote_ref = run_git(
+            ["rev-parse", f"origin/{CHECKPOINT_BRANCH}"],
+            check=False,
+        )
+        if remote_ref.returncode == 0:
+            local_sha = run_git(["rev-parse", "HEAD"]).stdout.strip()
+            remote_sha = remote_ref.stdout.strip()
+            ancestor = run_git(
+                ["merge-base", "--is-ancestor", remote_sha, local_sha],
+                check=False,
+            )
+            if ancestor.returncode != 0:
+                run_git(["rebase", f"origin/{CHECKPOINT_BRANCH}"])
+
+        pushed = run_git(
+            ["push", "origin", f"HEAD:refs/heads/{CHECKPOINT_BRANCH}"],
+            check=False,
+        )
+        if pushed.returncode == 0:
+            LOGGER.info(
+                "CHECKPOINT_SAVED rows_processed=%s attempt=%s",
+                processed_rows,
+                attempt,
+            )
+            return
+
+        LOGGER.warning(
+            "CHECKPOINT_PUSH_RETRY rows_processed=%s attempt=%s",
+            processed_rows,
+            attempt,
+        )
+
+    raise RuntimeError(
+        f"Could not persist frame checkpoint after {processed_rows} database rows."
+    )
+
+
 def prepare_frames() -> bool:
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         raise RuntimeError("FFmpeg and ffprobe must be installed on the runner.")
+
+    branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
+    if branch != CHECKPOINT_BRANCH:
+        raise RuntimeError(
+            f"Expected checkpoint branch '{CHECKPOINT_BRANCH}', got '{branch}'."
+        )
 
     rows = fetch_video_rows()
     if not rows:
@@ -357,86 +457,130 @@ def prepare_frames() -> bool:
 
     report = new_report()
     report["total_rows"] = len(rows)
+    report["resumed"] = 0
+    report["generated"] = 0
+    report["checkpoint_interval_rows"] = CHECKPOINT_EVERY_ROWS
     pages_base = pages_base_url()
     manifest_entries: list[dict[str, str]] = []
-    LOGGER.info("Preparing midpoint frames for %s video rows.", len(rows))
 
-    # Copy the previous frame tree first. Failed rows retain their old image,
-    # and their database img value is intentionally not changed.
-    with tempfile.TemporaryDirectory(prefix=".frames-staging-", dir=ROOT) as temp_dir:
-        staging_root = Path(temp_dir)
-        staging_frames = staging_root / "frames"
-        existing_frames = ROOT / "frames"
-        if existing_frames.is_dir():
-            shutil.copytree(existing_frames, staging_frames, dirs_exist_ok=True)
+    LOGGER.info(
+        "Preparing midpoint frames for %s video rows. Resumable checkpoint interval: %s rows.",
+        len(rows),
+        CHECKPOINT_EVERY_ROWS,
+    )
+
+    frames_root = ROOT / "frames"
+    frames_root.mkdir(parents=True, exist_ok=True)
+    for index, row in enumerate(rows, start=1):
+        post_id = str(row.get("id") or f"row-{index}")
+        try:
+            post_id = str(uuid.UUID(post_id))
+        except (ValueError, TypeError):
+            add_failure(report, post_id, "row_validation", "Invalid post UUID.", False)
+            if index % CHECKPOINT_EVERY_ROWS == 0:
+                write_report(report)
+                checkpoint_frames(index)
+            continue
+
+        folder_number = ((index - 1) // MAX_IMAGES_PER_FOLDER) + 1
+        relative_path = Path("frames") / f"{folder_number:04d}" / f"{post_id}.jpg"
+        final_output = ROOT / relative_path
+        previous_frame_kept = is_valid_jpeg(final_output)
+
+        # If this file exists on the persistent checkpoint branch, it is already
+        # safely saved. Reuse it and rebuild the manifest without re-downloading.
+        if previous_frame_kept:
+            manifest_entries.append({
+                "id": post_id,
+                "img_url": f"{pages_base}/{relative_path.as_posix()}",
+            })
+            report["resumed"] += 1
+            LOGGER.info(
+                "FRAME_RESUMED post_id=%s item=%s/%s",
+                post_id,
+                index,
+                len(rows),
+            )
         else:
-            staging_frames.mkdir(parents=True, exist_ok=True)
-
-        for index, row in enumerate(rows, start=1):
-            post_id = str(row.get("id") or f"row-{index}")
-            try:
-                post_id = str(uuid.UUID(post_id))
-            except (ValueError, TypeError):
-                add_failure(report, post_id, "row_validation", "Invalid post UUID.", False)
-                continue
-
-            folder_number = ((index - 1) // MAX_IMAGES_PER_FOLDER) + 1
-            relative_path = Path("frames") / f"{folder_number:04d}" / f"{post_id}.jpg"
-            staged_output = staging_root / relative_path
-            previous_frame_kept = (existing_frames / relative_path.relative_to("frames")).is_file()
-            temp_output = staged_output.with_name(staged_output.stem + ".new.jpg")
             stage = "source"
-
+            temp_output = final_output.with_name(final_output.stem + ".partial.jpg")
             try:
                 source = resolve_video_source(row.get("video_src"))
+
                 stage = "duration"
                 duration = probe_duration(source)
                 if duration is None:
                     duration = parse_duration(row.get("video_duration"))
                 if duration is None or duration <= 0:
-                    raise RuntimeError("Could not determine a valid duration from ffprobe or video_duration.")
+                    raise RuntimeError(
+                        "Could not determine a valid duration from ffprobe or video_duration."
+                    )
 
                 stage = "ffmpeg"
+                final_output.parent.mkdir(parents=True, exist_ok=True)
+                temp_output.unlink(missing_ok=True)
                 LOGGER.info(
                     "Extracting midpoint post_id=%s item=%s/%s at %.2f seconds.",
-                    post_id, index, len(rows), duration / 2.0,
+                    post_id,
+                    index,
+                    len(rows),
+                    duration / 2.0,
                 )
-                temp_output.parent.mkdir(parents=True, exist_ok=True)
-                temp_output.unlink(missing_ok=True)
                 extract_midpoint(source, duration, temp_output)
 
-                # Replace only after extraction produced a valid non-empty image.
-                os.replace(temp_output, staged_output)
+                if not is_valid_jpeg(temp_output):
+                    raise RuntimeError("FFmpeg output failed JPEG integrity validation.")
+
+                # Atomic rename prevents a partial file from being mistaken for
+                # a completed checkpoint on the next run.
+                os.replace(temp_output, final_output)
                 manifest_entries.append({
                     "id": post_id,
                     "img_url": f"{pages_base}/{relative_path.as_posix()}",
                 })
                 report["generated"] += 1
-                LOGGER.info("FRAME_OK post_id=%s item=%s/%s", post_id, index, len(rows))
+                LOGGER.info(
+                    "FRAME_OK post_id=%s item=%s/%s",
+                    post_id,
+                    index,
+                    len(rows),
+                )
 
             except Exception as exc:
                 temp_output.unlink(missing_ok=True)
                 reason = str(exc).strip() or type(exc).__name__
-                add_failure(report, post_id, stage, reason, previous_frame_kept)
-                continue
+                add_failure(
+                    report,
+                    post_id,
+                    stage,
+                    reason,
+                    previous_frame_kept,
+                )
 
-        if report["generated"]:
-            replace_frames_directory(staging_frames)
-        else:
-            report["notes"].append("No new frames were generated; the existing frames directory was left unchanged.")
+        # Save progress regularly, regardless of whether this row succeeded.
+        # This means an interrupted runner can lose at most one checkpoint window.
+        if index % CHECKPOINT_EVERY_ROWS == 0:
+            write_manifest(manifest_entries)
+            write_report(report)
+            checkpoint_frames(index)
 
+    # Always persist the final partial checkpoint too.
     write_manifest(manifest_entries)
+    write_report(report)
+    checkpoint_frames(len(rows), force=True)
+
     report["database"]["status"] = "pending" if manifest_entries else "not_started"
     write_report(report)
     write_step_summary(report, "Midpoint frame extraction")
 
     LOGGER.info(
-        "FRAME_BATCH_COMPLETE total=%s generated=%s failed=%s",
-        report["total_rows"], report["generated"], len(report["failures"]),
+        "FRAME_BATCH_COMPLETE total=%s generated=%s resumed=%s failed=%s",
+        report["total_rows"],
+        report["generated"],
+        report["resumed"],
+        len(report["failures"]),
     )
-    # Partial success is allowed. Zero successes fails the job after preserving
-    # the report so the workflow can upload it.
-    return report["generated"] > 0
+    return bool(manifest_entries)
 
 
 def update_database_images() -> bool:
