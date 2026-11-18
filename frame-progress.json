@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:50:01.327203+00:00",
+  "updated_at": "2026-11-18T08:50:30.929905+00:00",
   "total_rows": 1903,
   "next_index": 1810,
   "batches_completed": 37,
-  "generated": 1629,
+  "generated": 1677,
   "resumed": 0,
   "video_failures": [
     {
@@ -1093,6 +1093,18 @@
       "stage": "source",
       "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
       "recorded_at": "2026-11-18T08:49:30.736842+00:00"
+    },
+    {
+      "post_id": "9a9f835a-8a6d-4fc2-8a9d-3c508f69a116",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:50:11.135861+00:00"
+    },
+    {
+      "post_id": "cc5247b5-cf7a-400b-bdad-5ddfbc334ac3",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:50:27.953528+00:00"
     }
   ],
   "history": [
