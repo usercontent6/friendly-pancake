@@ -29,6 +29,19 @@ jobs:
           ref: main
           persist-credentials: true
 
+      - name: Prepare persistent checkpoint branch
+        run: |
+          set -euo pipefail
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+          if git ls-remote --exit-code --heads origin refs/heads/frame-regeneration-progress >/dev/null 2>&1; then
+            git fetch origin +refs/heads/frame-regeneration-progress:refs/remotes/origin/frame-regeneration-progress
+            git checkout -B frame-regeneration-progress origin/frame-regeneration-progress
+            git merge --no-edit origin/main
+          else
+            git checkout -B frame-regeneration-progress origin/main
+            git push --set-upstream origin frame-regeneration-progress
+          fi
+
       - name: Install FFmpeg
         run: |
           sudo apt-get update
@@ -51,36 +64,44 @@ jobs:
         id: generate
         run: python scripts/regenerate_frames.py
 
-      - name: Commit and push successful frames
+      - name: Publish checkpointed frames to main
+        id: publish
         if: steps.generate.outcome == 'success'
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add --all frames
-          if ! git diff --cached --quiet; then
-            git commit -m "Regenerate successful midpoint frames"
-            git push origin HEAD:main
-          else
-            echo "No frame files changed."
-          fi
+
+          # Keep the persistent checkpoint branch in sync with the latest main.
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+          git merge --no-edit origin/main
+          git push origin HEAD:refs/heads/frame-regeneration-progress
+
+          # Retry the final main push after merging any commits added while this
+          # job was processing. Extracted frames remain safely on the checkpoint
+          # branch even if main cannot be updated yet.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin +refs/heads/main:refs/remotes/origin/main
+            if ! git merge-base --is-ancestor origin/main HEAD; then
+              git merge --no-edit origin/main
+              git push origin HEAD:refs/heads/frame-regeneration-progress
+            fi
+
+            if git push origin HEAD:refs/heads/main; then
+              echo "Published checkpointed frames to main."
+              exit 0
+            fi
+
+            echo "Main moved during push; retrying merge/push (attempt $attempt of 5)."
+            sleep 3
+          done
+
+          echo "Could not publish to main after 5 attempts. Frames remain on frame-regeneration-progress."
+          exit 1
 
       - name: Update successful Neon img URLs
-        if: steps.generate.outcome == 'success'
+        if: steps.generate.outcome == 'success' && steps.publish.outcome == 'success'
         run: python scripts/regenerate_frames.py --update-db
-
-      - name: Commit regeneration report
-        if: always()
-        run: |
-          mkdir -p reports
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/
-          if ! git diff --cached --quiet; then
-            git commit -m "Add midpoint frame regeneration report"
-            git push origin HEAD:main
-          else
-            echo "No regeneration report changes to commit."
-          fi
 
       - name: Upload JSON and CSV error reports
         if: always()
