@@ -1,0 +1,88 @@
+name: Retry failed midpoint frames
+
+"on":
+  workflow_dispatch:
+  push:
+    paths:
+      - ".retry-failed-frames-launch"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: midpoint-frame-regeneration
+  cancel-in-progress: false
+
+jobs:
+  retry:
+    name: Retry only UUIDs in frame error CSV
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    env:
+      DATABASE_URL: \${{ secrets.DATABASE_URL }}
+      PAGES_BASE_URL: \${{ vars.PAGES_BASE_URL }}
+      VIDEO_BASE_URL: \${{ vars.VIDEO_BASE_URL }}
+
+    steps:
+      - name: Check out main with full history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Prepare retry checkpoint branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+
+          if git ls-remote --exit-code --heads origin refs/heads/frame-regeneration-retries >/dev/null 2>&1; then
+            git fetch origin +refs/heads/frame-regeneration-retries:refs/remotes/origin/frame-regeneration-retries
+            git checkout -B frame-regeneration-retries origin/frame-regeneration-retries
+            git merge --no-edit origin/main
+          else
+            git checkout -B frame-regeneration-retries origin/main
+            git push --set-upstream origin frame-regeneration-retries
+          fi
+
+      - name: Install FFmpeg if required
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install --yes ffmpeg
+          fi
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        run: python -m pip install --upgrade pip -r requirements.txt
+
+      - name: Validate retry script
+        run: |
+          python -m py_compile scripts/regenerate_frames.py
+          python -m py_compile scripts/retry_failed_frames.py
+
+      - name: Retry failed videos only and update Neon
+        run: python scripts/retry_failed_frames.py
+
+      - name: Upload retry reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-midpoint-frame-retry-report
+          path: |
+            reports/frame-regeneration-errors.csv
+            reports/frame-regeneration-retry-report.json
+            reports/frame-regeneration-retry-history.csv
+          if-no-files-found: warn
+          retention-days: 30
