@@ -17,9 +17,9 @@ jobs:
     timeout-minutes: 360
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      PAGES_BASE_URL: ${{ vars.PAGES_BASE_URL }}
-      VIDEO_BASE_URL: ${{ vars.VIDEO_BASE_URL }}
+      DATABASE_URL: \${{ secrets.DATABASE_URL }}
+      PAGES_BASE_URL: \${{ vars.PAGES_BASE_URL }}
+      VIDEO_BASE_URL: \${{ vars.VIDEO_BASE_URL }}
       FRAME_MANIFEST: /tmp/frame_manifest.json
 
     steps:
@@ -31,7 +31,7 @@ jobs:
 
       - name: Confirm the workflow is running for main
         run: |
-          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+          if [ "\${GITHUB_REF_NAME}" != "main" ]; then
             echo "Run this workflow from the main branch."
             exit 1
           fi
@@ -52,19 +52,47 @@ jobs:
         run: python -m pip install --upgrade pip -r requirements.txt
 
       - name: Generate midpoint frames
+        id: generate
         run: python scripts/regenerate_frames.py
 
-      - name: Commit and push generated images
+      - name: Commit and push successful frames
+        if: steps.generate.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add --all frames
           if ! git diff --cached --quiet; then
-            git commit -m "Regenerate midpoint video frames"
+            git commit -m "Regenerate successful midpoint frames"
+            git push origin HEAD:main
           else
-            echo "Frame files are unchanged; no image commit is needed."
+            echo "No frame files changed."
           fi
-          git push origin HEAD:main
 
-      - name: Update Neon img URLs
+      - name: Update successful Neon img URLs
+        if: steps.generate.outcome == 'success'
         run: python scripts/regenerate_frames.py --update-db
+
+      - name: Commit regeneration report
+        if: always()
+        run: |
+          mkdir -p reports
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/
+          if ! git diff --cached --quiet; then
+            git commit -m "Add midpoint frame regeneration report"
+            git push origin HEAD:main
+          else
+            echo "No regeneration report changes to commit."
+          fi
+
+      - name: Upload JSON and CSV error reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midpoint-frame-regeneration-report
+          path: |
+            reports/frame-regeneration-report.json
+            reports/frame-regeneration-errors.csv
+          if-no-files-found: warn
+          retention-days: 30
