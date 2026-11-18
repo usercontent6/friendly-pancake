@@ -3,9 +3,9 @@
   "started_at": "2026-11-18T16:16:04.715314+00:00",
   "source": "reports/frame-regeneration-errors.csv",
   "previous_errors": 191,
-  "attempted": 150,
-  "recovered": 58,
-  "still_failing": 133,
+  "attempted": 191,
+  "recovered": 67,
+  "still_failing": 124,
   "batches": [
     {
       "batch": 1,
@@ -44,8 +44,9 @@
       "reused": 0,
       "frame_successes": 9,
       "video_failures": 32,
-      "stage": "frames_published_pending_db"
+      "stage": "database_updated",
+      "neon_updated": 9
     }
   ],
-  "updated_at": "2026-11-18T16:18:58.650843+00:00"
+  "updated_at": "2026-11-18T16:21:30.714348+00:00"
 }
