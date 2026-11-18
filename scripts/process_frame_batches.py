@@ -341,6 +341,9 @@ def process_one_batch(
 
     state["generated"] = int(state.get("generated", 0)) + generated_now
     state["resumed"] = int(state.get("resumed", 0)) + resumed_now
+    # Create the cursor file before the first image commit. The saved cursor
+    # intentionally remains at "start" until Neon confirms the batch.
+    write_state(state)
     last_batch = {
         "batch_number": batch_number,
         "start_index": start,
