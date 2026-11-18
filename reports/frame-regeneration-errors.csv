@@ -159,3 +159,13 @@ b1261d61-3f0f-4bdf-b856-9ab2cc012c61,ffmpeg,Fast seek: FFmpeg exited with code 2
 a90148ad-67a5-488f-a548-5200e17b6e0b,ffmpeg,Fast seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs. Accurate seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs.,2026-11-18T08:42:43.143838+00:00
 0b32ea94-faee-4803-94e8-45f2bb920ff1,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:42:44.821898+00:00
 2749969b-1e97-49ea-8600-5fe7fa981b27,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:42:53.041522+00:00
+11e780f8-2b49-4827-87af-dca38d374efb,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:43:36.333305+00:00
+636fbc27-8543-4663-9050-a95990ab3095,ffmpeg,Fast seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs. Accurate seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs.,2026-11-18T08:43:48.259633+00:00
+1ac07ecf-f272-4c7e-b400-dd3b09eadfc4,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:43:51.523541+00:00
+21e79cb6-d4a5-49d0-979a-aceb0b7fb9aa,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:43:53.759133+00:00
+0aa0570c-fc33-4712-ab85-abbb4906f209,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:43:53.914248+00:00
+1f365a70-2854-42b3-88b6-d6b455a498e3,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:43:58.070911+00:00
+0f023ac1-cbca-46dd-96f0-eedf5a184deb,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:43:59.302711+00:00
+06eee56c-ebfa-4465-855a-2d3801148cde,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:44:03.270216+00:00
+24dcbc40-fecc-4754-97f5-80826971d639,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:44:09.029518+00:00
+102720f0-331f-48c2-9d74-500a79626c56,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:44:19.952541+00:00
