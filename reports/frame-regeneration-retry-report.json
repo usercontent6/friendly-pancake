@@ -26,6 +26,15 @@
       "video_failures": 32,
       "stage": "database_updated",
       "neon_updated": 18
+    },
+    {
+      "batch": 3,
+      "rows": 50,
+      "generated": 21,
+      "reused": 0,
+      "frame_successes": 21,
+      "video_failures": 29,
+      "stage": "frames_published_pending_db"
     }
   ],
   "updated_at": "2026-11-18T16:18:01.618222+00:00"
