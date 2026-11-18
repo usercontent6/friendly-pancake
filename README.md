@@ -1,53 +1,64 @@
 # Midpoint video frame generator
 
-This repository stores one generated JPG frame per video in the Neon `public.blog_posts` table. The frame is captured at the midpoint of the video and its GitHub Pages URL is written back to `blog_posts.img`.
+This repository stores one generated JPG midpoint frame per video in the Neon \`public.blog_posts\` table. Each successful frame is published through GitHub Pages, then its URL is written to \`public.blog_posts.img\`.
 
 ## One-time setup
 
-1. In **Settings → Secrets and variables → Actions**, create or confirm the repository secret named `DATABASE_URL`. It must connect to the Neon project whose database contains `public.blog_posts`.
-2. In **Settings → Pages**, choose **Deploy from a branch**, select branch `main`, and select folder `/(root)`. Save.
+1. In **Settings → Secrets and variables → Actions**, create or confirm the repository secret named \`DATABASE_URL\`. It must connect to the Neon database containing \`public.blog_posts\`.
+2. In **Settings → Pages**, choose **Deploy from a branch**, select \`main\`, and select folder \`/(root)\`.
 3. Wait for GitHub Pages to finish its first deployment.
-4. Open **Actions → Regenerate midpoint frames → Run workflow** and run it on `main`.
+4. Open **Actions → Regenerate midpoint frames → Run workflow** and run it on \`main\`.
 
 The default Pages base URL is:
 
-`https://usercontent6.github.io/friendly-pancake`
+\`https://usercontent6.github.io/friendly-pancake\`
 
-You can override it by creating an Actions **variable** named `PAGES_BASE_URL` with your actual Pages base URL (no trailing slash required).
+Override it with an Actions variable named \`PAGES_BASE_URL\` if your Pages URL differs.
 
 ### Relative video paths
 
-The script accepts absolute `http://` and `https://` video URLs. If `video_src` contains a relative path (for example, `videos/example.mp4`), add an Actions **variable** named `VIDEO_BASE_URL` containing the base URL used to resolve those paths.
+Absolute \`http://\` and \`https://\` values in \`video_src\` are used directly. If \`video_src\` contains a relative path, configure the Actions variable \`VIDEO_BASE_URL\` with the base URL used to resolve those paths.
 
-The workflow needs the video URLs to be reachable by GitHub-hosted runners. Expiring signed URLs may fail if they expire before the frame can be extracted.
+The source videos must be reachable from GitHub-hosted runners. Expiring signed URLs may fail if they expire before extraction.
 
-## Folder layout
+## Frame folder layout
 
-Frames are written as:
+Images are stored in numbered folders with a maximum of 100 images per folder:
 
-```text
+\`\`\`text
 frames/
-  0001/   # rows 1–100
-    <post-uuid>.jpg
-  0002/   # rows 101–200
-    <post-uuid>.jpg
+  0001/   # ordered video rows 1–100
+  0002/   # ordered video rows 101–200
   0003/
-    ...
-```
+\`\`\`
 
-No numbered folder receives more than 100 generated images. Rows are ordered by `upload_date` (oldest first, null dates last) and then by `id`, so newly uploaded posts normally append to the end.
+Rows are read in stable order: \`upload_date\` oldest first (null dates last), then \`id\`.
 
-## Safety and update behavior
+## Batch processing
 
-- The workflow reads only `id`, `video_src`, and `video_duration` from `public.blog_posts`; it uses `upload_date` only to order rows.
-- It updates only the `img` column. It does not access `comments` or other post fields.
-- Duration is detected with `ffprobe`; `video_duration` is the fallback if the video metadata does not provide a usable duration.
-- The workflow uses a persistent `frame-regeneration-progress` branch. It commits extracted frames to that branch every 25 database rows. If a runner stops or a final push fails, rerunning the workflow checks out the checkpoint branch, validates existing JPEG files, skips completed videos, and resumes. Only the final publication step merges the checkpoint branch with the latest `main` and pushes it to `main`. If that final push still fails, completed frames remain stored on the checkpoint branch.
-- After all frames are generated, the workflow pushes the images to `main`. Only after that succeeds does it update the database URLs.
-- Each manual run regenerates the complete frame set. It is intentionally not scheduled, to avoid repeatedly downloading every video without your instruction.
+The workflow no longer tries to process all videos in one large extraction pass.
 
-## Run it
+1. It starts with a **10-video test batch**.
+2. After the test batch's frames are committed to the repository and the successful image URLs are updated in Neon, it continues automatically with **50-video batches**.
+3. Each completed batch is published before the next batch begins. The progress cursor advances only after the batch's Neon transaction succeeds.
+4. If the runner stops during a batch, rerunning resumes that same batch. Valid JPGs already committed to the repository are reused, and the \`img\` update can safely be repeated.
+5. Individual video failures (such as HTTP 404, inaccessible relative paths, or invalid media) are written to \`reports/frame-regeneration-errors.csv\` and the workflow continues with the remaining videos. Git, Neon connection, transaction, or publishing failures stop the run without advancing the cursor.
 
-Go to **Actions → Regenerate midpoint frames → Run workflow**. The GitHub Actions job installs FFmpeg and updates the repository and Neon database.
+The persistent checkpoint branch is \`frame-regeneration-batches\`. The workflow publishes each batch to both that branch and \`main\`; it does not push workflow-definition changes into the checkpoint branch as part of a frame batch.
 
-Individual video errors do not stop the batch. Completed frames are checkpointed every 25 rows and reused on later runs. Each failure is logged with its post UUID, processing stage, and a sanitized reason; raw FFmpeg output and source URLs are never logged because they may contain temporary access signatures. Every run writes reports/frame-regeneration-report.json and reports/frame-regeneration-errors.csv and uploads them as a GitHub Actions artifact. The run summary also lists failures. When zero frames succeed, no frame or database changes are made, but the report is still uploaded.
+## Database safety
+
+- The workflow reads only \`id\`, \`video_src\`, and \`video_duration\` from \`public.blog_posts\`; \`upload_date\` is used only for ordering.
+- It updates only the \`img\` column.
+- A batch's Neon updates are one transaction. If any update fails, the transaction rolls back and that batch's cursor is not advanced.
+- It does not access \`comments\` or other post fields.
+
+## Reports and status
+
+Every batch writes:
+
+- \`reports/frame-regeneration-report.json\`
+- \`reports/frame-regeneration-errors.csv\`
+- \`frame-progress.json\`
+
+The reports are committed to the repository and uploaded as a GitHub Actions artifact. The CSV contains the video UUID, processing stage, and sanitized reason; raw source URLs and FFmpeg output are not logged because signed URLs may contain temporary credentials.
