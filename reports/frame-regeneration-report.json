@@ -1,23 +1,22 @@
 {
-  "updated_at": "2026-11-18T08:34:01.081582+00:00",
+  "updated_at": "2026-11-18T08:34:54.133509+00:00",
   "status": "running",
   "total_rows": 1903,
   "next_index": 1010,
   "batches_completed": 21,
-  "generated": 886,
+  "generated": 932,
   "resumed": 0,
-  "video_failures": 124,
+  "video_failures": 128,
   "last_batch": {
-    "batch_number": 21,
-    "start_index": 960,
-    "end_index": 1010,
+    "batch_number": 22,
+    "start_index": 1010,
+    "end_index": 1060,
     "rows": 50,
-    "generated": 40,
+    "generated": 46,
     "resumed": 0,
-    "video_failures": 10,
-    "db_updated": 40,
-    "started_at": "2026-11-18T08:33:48.436826+00:00",
-    "completed_at": "2026-11-18T08:34:01.080122+00:00"
+    "video_failures": 4,
+    "db_updated": 0,
+    "started_at": "2026-11-18T08:34:54.133483+00:00"
   },
   "history": [
     {
