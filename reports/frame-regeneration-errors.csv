@@ -1,0 +1,4 @@
+﻿post_id,stage,reason,recorded_at
+283c3536-bc39-42ef-96a0-3bbec50ab6fb,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:11:49.560951+00:00
+13e3c9c5-edae-46eb-a51b-1d0c757e3c5c,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:11:49.676976+00:00
+1e9d1e8f-081b-423d-97da-010d64c76904,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:11:50.993666+00:00
