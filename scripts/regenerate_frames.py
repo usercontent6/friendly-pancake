@@ -266,7 +266,87 @@ def replace_frames_directory(staging_frames: Path) -> None:
             shutil.rmtree(backup)
 
 
-def prepare_frames() -> None:
+def new_report() -> dict[str, Any]:
+    return {
+        "run_id": os.getenv("GITHUB_RUN_ID"),
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "finished_at": None,
+        "status": "running",
+        "total_rows": 0,
+        "generated": 0,
+        "failures": [],
+        "database": {"status": "pending", "updated": 0, "failed": 0},
+        "notes": [],
+    }
+
+
+def add_failure(report: dict[str, Any], post_id: str, stage: str, reason: str, previous_frame_kept: bool) -> None:
+    item = {
+        "post_id": post_id,
+        "stage": stage,
+        "reason": reason,
+        "previous_frame_kept": previous_frame_kept,
+    }
+    report["failures"].append(item)
+    LOGGER.error(
+        "FRAME_FAILED post_id=%s stage=%s previous_frame_kept=%s reason=%s",
+        post_id, stage, previous_frame_kept, reason,
+    )
+
+
+def write_report(report: dict[str, Any]) -> None:
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    report["finished_at"] = datetime.now(timezone.utc).isoformat()
+    report["status"] = "partial" if report.get("generated", 0) and report.get("failures") else (
+        "success" if report.get("generated", 0) else "failed"
+    )
+    REPORT_JSON.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    with REPORT_CSV.open("w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["post_id", "stage", "reason", "previous_frame_kept"])
+        writer.writeheader()
+        for item in report.get("failures", []):
+            writer.writerow({key: item.get(key, "") for key in writer.fieldnames})
+
+
+def write_step_summary(report: dict[str, Any], heading: str) -> None:
+    summary = os.getenv("GITHUB_STEP_SUMMARY")
+    if not summary:
+        return
+    database = report.get("database", {})
+    lines = [
+        f"## {heading}",
+        "",
+        f"- **Status:** {report.get('status', 'unknown')}",
+        f"- **Rows considered:** {report.get('total_rows', 0)}",
+        f"- **Frames generated:** {report.get('generated', 0)}",
+        f"- **Errors recorded:** {len(report.get('failures', []))}",
+        f"- **Neon updates:** {database.get('updated', 0)}",
+        f"- **Neon update failures:** {database.get('failed', 0)}",
+        "",
+    ]
+    failures = report.get("failures", [])
+    if failures:
+        lines.extend(["### Errors", "", "| Post UUID | Stage | Reason |", "|---|---|---|"])
+        for item in failures[:50]:
+            post_id = str(item.get("post_id", "")).replace("|", "\\|")
+            stage = str(item.get("stage", "")).replace("|", "\\|")
+            reason = str(item.get("reason", "")).replace("|", "\\|")
+            lines.append(f"| {post_id} | {stage} | {reason} |")
+        if len(failures) > 50:
+            lines.append(f"\nSee the CSV report for all {len(failures)} errors.")
+    else:
+        lines.append("No errors recorded.")
+    with open(summary, "a", encoding="utf-8") as handle:
+        handle.write("\n".join(lines) + "\n")
+
+
+def write_manifest(entries: list[dict[str, str]]) -> None:
+    path = manifest_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+
+
+def prepare_frames() -> bool:
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         raise RuntimeError("FFmpeg and ffprobe must be installed on the runner.")
 
@@ -274,62 +354,88 @@ def prepare_frames() -> None:
     if not rows:
         raise RuntimeError("No blog_posts rows with a non-empty video_src were found.")
 
+    report = new_report()
+    report["total_rows"] = len(rows)
     pages_base = pages_base_url()
     manifest_entries: list[dict[str, str]] = []
-
     LOGGER.info("Preparing midpoint frames for %s video rows.", len(rows))
 
-    # Build the complete replacement off to the side. Existing frames remain intact
-    # unless every row has produced a valid image.
+    # Copy the previous frame tree first. Failed rows retain their old image,
+    # and their database img value is intentionally not changed.
     with tempfile.TemporaryDirectory(prefix=".frames-staging-", dir=ROOT) as temp_dir:
         staging_root = Path(temp_dir)
         staging_frames = staging_root / "frames"
+        existing_frames = ROOT / "frames"
+        if existing_frames.is_dir():
+            shutil.copytree(existing_frames, staging_frames, dirs_exist_ok=True)
+        else:
+            staging_frames.mkdir(parents=True, exist_ok=True)
 
         for index, row in enumerate(rows, start=1):
-            post_id = str(uuid.UUID(str(row["id"])))
-            source = resolve_video_source(row.get("video_src"))
-
-            duration = probe_duration(source)
-            if duration is None:
-                duration = parse_duration(row.get("video_duration"))
-            if duration is None:
-                raise RuntimeError(
-                    f"Could not determine video duration for post {post_id}; "
-                    "ffprobe and video_duration both failed."
-                )
+            post_id = str(row.get("id") or f"row-{index}")
+            try:
+                post_id = str(uuid.UUID(post_id))
+            except (ValueError, TypeError):
+                add_failure(report, post_id, "row_validation", "Invalid post UUID.", False)
+                continue
 
             folder_number = ((index - 1) // MAX_IMAGES_PER_FOLDER) + 1
             relative_path = Path("frames") / f"{folder_number:04d}" / f"{post_id}.jpg"
             staged_output = staging_root / relative_path
+            previous_frame_kept = (existing_frames / relative_path.relative_to("frames")).is_file()
+            temp_output = staged_output.with_name(staged_output.stem + ".new.jpg")
+            stage = "source"
 
-            LOGGER.info(
-                "Extracting post %s (%s of %s) at %.2f seconds.",
-                post_id,
-                index,
-                len(rows),
-                duration / 2.0,
-            )
-            extract_midpoint(source, duration, staged_output)
+            try:
+                source = resolve_video_source(row.get("video_src"))
+                stage = "duration"
+                duration = probe_duration(source)
+                if duration is None:
+                    duration = parse_duration(row.get("video_duration"))
+                if duration is None or duration <= 0:
+                    raise RuntimeError("Could not determine a valid duration from ffprobe or video_duration.")
 
-            manifest_entries.append({
-                "id": post_id,
-                "img_url": f"{pages_base}/{relative_path.as_posix()}",
-            })
+                stage = "ffmpeg"
+                LOGGER.info(
+                    "Extracting midpoint post_id=%s item=%s/%s at %.2f seconds.",
+                    post_id, index, len(rows), duration / 2.0,
+                )
+                temp_output.parent.mkdir(parents=True, exist_ok=True)
+                temp_output.unlink(missing_ok=True)
+                extract_midpoint(source, duration, temp_output)
 
-        replace_frames_directory(staging_frames)
+                # Replace only after extraction produced a valid non-empty image.
+                os.replace(temp_output, staged_output)
+                manifest_entries.append({
+                    "id": post_id,
+                    "img_url": f"{pages_base}/{relative_path.as_posix()}",
+                })
+                report["generated"] += 1
+                LOGGER.info("FRAME_OK post_id=%s item=%s/%s", post_id, index, len(rows))
 
-    path = manifest_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(manifest_entries, indent=2),
-        encoding="utf-8",
-    )
+            except Exception as exc:
+                temp_output.unlink(missing_ok=True)
+                reason = str(exc).strip() or type(exc).__name__
+                add_failure(report, post_id, stage, reason, previous_frame_kept)
+                continue
+
+        if report["generated"]:
+            replace_frames_directory(staging_frames)
+        else:
+            report["notes"].append("No new frames were generated; the existing frames directory was left unchanged.")
+
+    write_manifest(manifest_entries)
+    report["database"]["status"] = "pending" if manifest_entries else "not_started"
+    write_report(report)
+    write_step_summary(report, "Midpoint frame extraction")
+
     LOGGER.info(
-        "Generated %s frames in %s folders. Manifest: %s",
-        len(manifest_entries),
-        (len(manifest_entries) + MAX_IMAGES_PER_FOLDER - 1) // MAX_IMAGES_PER_FOLDER,
-        path,
+        "FRAME_BATCH_COMPLETE total=%s generated=%s failed=%s",
+        report["total_rows"], report["generated"], len(report["failures"]),
     )
+    # Partial success is allowed. Zero successes fails the job after preserving
+    # the report so the workflow can upload it.
+    return report["generated"] > 0
 
 
 def update_database_images() -> None:
