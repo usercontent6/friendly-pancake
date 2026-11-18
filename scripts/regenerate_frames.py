@@ -524,24 +524,47 @@ def update_database_images() -> bool:
     return report["database"]["failed"] == 0
 
 
-def main() -> None:
+def write_fatal_report(stage: str, exc: Exception) -> None:
+    report = new_report()
+    report["database"]["status"] = "not_started"
+    sqlstate = getattr(exc, "sqlstate", None)
+    reason = type(exc).__name__
+    if sqlstate:
+        reason += f" (SQLSTATE {sqlstate})"
+    report["failures"].append({
+        "post_id": "",
+        "stage": stage,
+        "reason": reason,
+        "previous_frame_kept": "",
+    })
+    write_report(report)
+    write_step_summary(report, "Midpoint frame regeneration")
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--update-db",
         action="store_true",
-        help="Update blog_posts.img from the manifest after the frames have been pushed.",
+        help="Update blog_posts.img for successfully generated frames.",
     )
     args = parser.parse_args()
 
     if args.update_db:
-        update_database_images()
-    else:
-        prepare_frames()
+        try:
+            return 0 if update_database_images() else 1
+        except Exception as exc:
+            LOGGER.error("DATABASE_STAGE_FATAL %s", type(exc).__name__)
+            write_fatal_report("database", exc)
+            return 1
+
+    try:
+        return 0 if prepare_frames() else 1
+    except Exception as exc:
+        LOGGER.error("PREPARATION_FATAL %s", type(exc).__name__)
+        write_fatal_report("preparation", exc)
+        return 1
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as exc:
-        LOGGER.error("%s", exc)
-        raise SystemExit(1) from exc
+    sys.exit(main())
