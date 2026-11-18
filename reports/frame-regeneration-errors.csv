@@ -153,3 +153,6 @@ b1261d61-3f0f-4bdf-b856-9ab2cc012c61,ffmpeg,Fast seek: FFmpeg exited with code 2
 2792c154-b149-4454-a542-06e02d71658a,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:40:21.473100+00:00
 29a0f508-f3a8-4723-b095-55c033d9664f,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:40:37.517501+00:00
 13bcf9ff-6c3f-4ff4-a72f-bc5caf4a5b28,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:40:40.168149+00:00
+1bd4518f-8830-4129-a3e0-f273d562df9d,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:41:13.127914+00:00
+1576fea6-65ff-472f-9c5f-0c575dc9c3d8,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:41:31.079304+00:00
+224ce77d-8b45-4e86-93ca-ecd999603e0f,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:41:50.175092+00:00
