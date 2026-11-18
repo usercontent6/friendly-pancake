@@ -17,9 +17,9 @@ jobs:
     timeout-minutes: 180
 
     env:
-      DATABASE_URL: \${{ secrets.DATABASE_URL }}
-      PAGES_BASE_URL: \${{ vars.PAGES_BASE_URL }}
-      VIDEO_BASE_URL: \${{ vars.VIDEO_BASE_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PAGES_BASE_URL: ${{ vars.PAGES_BASE_URL || 'https://usercontent6.github.io/friendly-pancake' }}
+      VIDEO_BASE_URL: ${{ vars.VIDEO_BASE_URL }}
 
     steps:
       - name: Check out main with full history
