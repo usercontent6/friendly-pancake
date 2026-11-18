@@ -2,6 +2,9 @@ name: Retry failed midpoint frames
 
 "on":
   workflow_dispatch:
+  push:
+    paths:
+      - ".retry-failed-frames-launch"
 
 permissions:
   contents: write
