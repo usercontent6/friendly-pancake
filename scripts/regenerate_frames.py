@@ -389,6 +389,12 @@ def checkpoint_frames(processed_rows: int, *, force: bool = False) -> None:
             f"Expected to run on checkpoint branch '{CHECKPOINT_BRANCH}'."
         )
 
+    # Configure an author before the first checkpoint commit. actions/checkout
+    # does not guarantee a Git identity, and the workflow must be able to commit
+    # the first batch before it reaches the later publish step.
+    run_git(["config", "user.name", "github-actions[bot]"])
+    run_git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
+
     run_git(["add", "--all", "--", "frames"])
     staged = run_git(["diff", "--cached", "--quiet"], check=False)
     if staged.returncode == 0 and not force:
@@ -676,6 +682,12 @@ def write_fatal_report(stage: str, exc: Exception) -> None:
     report["database"]["status"] = "not_started"
     sqlstate = getattr(exc, "sqlstate", None)
     reason = type(exc).__name__
+    # RuntimeError messages in this script are deliberately sanitized (for
+    # example, git diagnostics or HTTP status summaries). Preserve them so a
+    # fatal checkpoint error is actionable without exposing signed media URLs.
+    if isinstance(exc, RuntimeError) and str(exc).strip():
+        detail = str(exc).strip()
+        reason += f": {detail[:1200]}"
     if sqlstate:
         reason += f" (SQLSTATE {sqlstate})"
     report["failures"].append({
@@ -708,7 +720,7 @@ def main() -> int:
     try:
         return 0 if prepare_frames() else 1
     except Exception as exc:
-        LOGGER.error("PREPARATION_FATAL %s", type(exc).__name__)
+        LOGGER.error("PREPARATION_FATAL %s", str(exc).strip() or type(exc).__name__)
         write_fatal_report("preparation", exc)
         return 1
 
