@@ -31,7 +31,7 @@ REPORT_DIR = ROOT / "reports"
 RETRY_REPORT = REPORT_DIR / "frame-regeneration-retry-report.json"
 RETRY_HISTORY = REPORT_DIR / "frame-regeneration-retry-history.csv"
 
-CHECKPOINT_BRANCH = "frame-regeneration-retries"
+CHECKPOINT_BRANCH = "main"
 BATCH_SIZE = 50
 MAX_IMAGES_PER_FOLDER = 100
 
@@ -71,7 +71,7 @@ def ensure_branch() -> None:
     branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
     if branch != CHECKPOINT_BRANCH:
         raise RuntimeError(
-            f"Expected checkpoint branch {CHECKPOINT_BRANCH}, found {branch}."
+            f"Expected to run directly on main, found branch {branch}."
         )
     run_git(["config", "user.name", "github-actions[bot]"])
     run_git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
@@ -233,17 +233,6 @@ def commit_and_publish(message: str) -> None:
 
     run_git(["commit", "-m", message])
 
-    branch_push = run_git(
-        ["push", "origin", f"HEAD:refs/heads/{CHECKPOINT_BRANCH}"],
-        check=False,
-    )
-    if branch_push.returncode != 0:
-        detail = (branch_push.stderr or branch_push.stdout or "").strip()
-        raise RuntimeError(
-            "Checkpoint branch push failed; retry progress was not advanced. "
-            + detail[-1600:]
-        )
-
     main_push = run_git(
         ["push", "origin", "HEAD:refs/heads/main"],
         check=False,
@@ -251,8 +240,7 @@ def commit_and_publish(message: str) -> None:
     if main_push.returncode != 0:
         detail = (main_push.stderr or main_push.stdout or "").strip()
         raise RuntimeError(
-            "Checkpoint branch was saved, but publishing to main failed. "
-            "The database was not changed for this pending batch. "
+            "Publishing the retry batch to main failed; Neon was not updated. "
             + detail[-1600:]
         )
 
