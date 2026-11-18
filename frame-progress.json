@@ -1,10 +1,10 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:12:48.825626+00:00",
+  "updated_at": "2026-11-18T08:13:03.240696+00:00",
   "total_rows": 1903,
-  "next_index": 10,
-  "batches_completed": 1,
+  "next_index": 60,
+  "batches_completed": 2,
   "generated": 55,
   "resumed": 0,
   "video_failures": [
@@ -51,6 +51,18 @@
       "db_updated": 7,
       "started_at": "2026-11-18T08:11:52.104559+00:00",
       "completed_at": "2026-11-18T08:11:57.649769+00:00"
+    },
+    {
+      "batch_number": 2,
+      "start_index": 10,
+      "end_index": 60,
+      "rows": 50,
+      "generated": 48,
+      "resumed": 0,
+      "video_failures": 2,
+      "db_updated": 48,
+      "started_at": "2026-11-18T08:12:48.825900+00:00",
+      "completed_at": "2026-11-18T08:13:03.240597+00:00"
     }
   ],
   "status": "running"
