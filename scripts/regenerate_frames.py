@@ -43,7 +43,8 @@ def require_database_url() -> str:
 
 
 def pages_base_url() -> str:
-    value = os.getenv("PAGES_BASE_URL", DEFAULT_PAGES_BASE_URL).strip().rstrip("/")
+    value = os.getenv("PAGES_BASE_URL", "").strip() or DEFAULT_PAGES_BASE_URL
+    value = value.rstrip("/")
     parsed = urlparse(value)
     if parsed.scheme != "https" or not parsed.netloc:
         raise RuntimeError("PAGES_BASE_URL must be a complete HTTPS base URL.")
