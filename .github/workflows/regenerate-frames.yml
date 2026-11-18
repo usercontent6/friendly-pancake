@@ -2,6 +2,9 @@ name: Regenerate midpoint frames
 
 "on":
   workflow_dispatch:
+  push:
+    paths:
+      - ".frame-regeneration-launch"
 
 permissions:
   contents: write
@@ -41,6 +44,8 @@ jobs:
             git checkout -B frame-regeneration-progress origin/main
             git push --set-upstream origin frame-regeneration-progress
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Install FFmpeg
         run: |
