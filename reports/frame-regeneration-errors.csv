@@ -60,3 +60,9 @@
 064a3088-ccad-41d6-a2b4-549ae3e9213c,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:24:34.724594+00:00
 22e2ba25-2090-4ef2-8353-6db7d4c3dbba,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:24:54.467303+00:00
 10cbac5e-54ed-49ef-8d5b-fa0876cba948,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:25:06.580366+00:00
+17da03b6-6eb5-4ba7-8f88-8c77f0b79cd3,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:25:43.330122+00:00
+193da0d1-5d11-411b-9743-695f28052674,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:25:46.518040+00:00
+251088de-7b7a-41eb-a8f7-484bc08116a0,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:25:50.913522+00:00
+0f902c72-cfa2-44a1-ad52-6ba3dd6e125a,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:25:56.860077+00:00
+21bc4b2b-dcf4-4ea6-bb95-e7bc7c86f9d9,ffmpeg,Video host returned HTTP 404; source file was not found.,2026-11-18T08:26:06.316184+00:00
+b1261d61-3f0f-4bdf-b856-9ab2cc012c61,ffmpeg,Fast seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs. Accurate seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs.,2026-11-18T08:26:18.766332+00:00
