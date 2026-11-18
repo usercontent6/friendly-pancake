@@ -42,7 +42,7 @@ No numbered folder receives more than 100 generated images. Rows are ordered by 
 - The workflow reads only `id`, `video_src`, and `video_duration` from `public.blog_posts`; it uses `upload_date` only to order rows.
 - It updates only the `img` column. It does not access `comments` or other post fields.
 - Duration is detected with `ffprobe`; `video_duration` is the fallback if the video metadata does not provide a usable duration.
-- The extraction stage builds a complete replacement frame tree in a staging directory. If any video cannot be accessed or decoded, the run stops before replacing the existing frames, pushing files, or changing the database.
+- The extraction stage starts from a copy of the existing frame tree. If one video cannot be accessed or decoded, that row is recorded and processing continues. Existing frames for failed rows are preserved, and their Neon img values are left unchanged. Successful frames are pushed and only their matching img values are updated.
 - After all frames are generated, the workflow pushes the images to `main`. Only after that succeeds does it update the database URLs.
 - Each manual run regenerates the complete frame set. It is intentionally not scheduled, to avoid repeatedly downloading every video without your instruction.
 
@@ -50,4 +50,4 @@ No numbered folder receives more than 100 generated images. Rows are ordered by 
 
 Go to **Actions → Regenerate midpoint frames → Run workflow**. The GitHub Actions job installs FFmpeg and updates the repository and Neon database.
 
-If a run fails, check its log for the post UUID. Video URLs are deliberately omitted from logs because they may contain temporary access signatures.
+Individual video errors do not stop the batch when at least one frame succeeds. Each failure is logged with its post UUID, processing stage, and a sanitized reason; raw FFmpeg output and source URLs are never logged because they may contain temporary access signatures. Every run writes reports/frame-regeneration-report.json and reports/frame-regeneration-errors.csv, commits those reports to the repository, and uploads them as a GitHub Actions artifact. The run summary also lists failures. When zero frames succeed, no frame or database changes are made, but the report is still committed and uploaded.
