@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import logging
 import os
@@ -13,6 +14,7 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -24,6 +26,9 @@ DEFAULT_PAGES_BASE_URL = "https://usercontent6.github.io/friendly-pancake"
 DEFAULT_MANIFEST = Path(tempfile.gettempdir()) / "frame_manifest.json"
 MAX_IMAGES_PER_FOLDER = 100
 MAX_IMAGE_WIDTH = 1280
+REPORT_DIR = ROOT / "reports"
+REPORT_JSON = REPORT_DIR / "frame-regeneration-report.json"
+REPORT_CSV = REPORT_DIR / "frame-regeneration-errors.csv"
 
 logging.basicConfig(
     level=logging.INFO,
