@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-18T08:51:22.596281+00:00",
+  "updated_at": "2026-11-18T08:51:25.051952+00:00",
   "status": "completed",
   "total_rows": 1903,
   "next_index": 1903,
@@ -7,18 +7,7 @@
   "generated": 1712,
   "resumed": 0,
   "video_failures": 191,
-  "last_batch": {
-    "batch_number": 39,
-    "start_index": 1860,
-    "end_index": 1903,
-    "rows": 43,
-    "generated": 35,
-    "resumed": 0,
-    "video_failures": 8,
-    "db_updated": 35,
-    "started_at": "2026-11-18T08:51:10.939533+00:00",
-    "completed_at": "2026-11-18T08:51:22.594563+00:00"
-  },
+  "last_batch": null,
   "history": [
     {
       "batch_number": 1,
