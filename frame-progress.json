@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:13:03.240696+00:00",
+  "updated_at": "2026-11-18T08:13:55.518886+00:00",
   "total_rows": 1903,
   "next_index": 60,
   "batches_completed": 2,
-  "generated": 55,
+  "generated": 102,
   "resumed": 0,
   "video_failures": [
     {
@@ -37,6 +37,24 @@
       "stage": "ffmpeg",
       "reason": "Video host returned HTTP 404; source file was not found.",
       "recorded_at": "2026-11-18T08:12:26.016311+00:00"
+    },
+    {
+      "post_id": "08673cc7-f65e-473f-a3f8-7f32299aeb42",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:13:11.149775+00:00"
+    },
+    {
+      "post_id": "1f17c99d-e1c2-490c-87a7-a925ac38fbdc",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:13:27.225754+00:00"
+    },
+    {
+      "post_id": "1bd972b9-69f8-4cf6-94fa-8334651d232e",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:13:46.664795+00:00"
     }
   ],
   "history": [
