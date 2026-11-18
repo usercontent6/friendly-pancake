@@ -29,21 +29,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Prepare retry checkpoint branch
+      - name: Configure Git author
         run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin +refs/heads/main:refs/remotes/origin/main
-
-          if git ls-remote --exit-code --heads origin refs/heads/frame-regeneration-retries >/dev/null 2>&1; then
-            git fetch origin +refs/heads/frame-regeneration-retries:refs/remotes/origin/frame-regeneration-retries
-            git checkout -B frame-regeneration-retries origin/frame-regeneration-retries
-            git merge --no-edit origin/main
-          else
-            git checkout -B frame-regeneration-retries origin/main
-            git push --set-upstream origin frame-regeneration-retries
-          fi
 
       - name: Install FFmpeg if required
         run: |
