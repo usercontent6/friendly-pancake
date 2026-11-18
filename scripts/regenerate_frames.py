@@ -64,7 +64,12 @@ def fetch_video_rows() -> list[dict[str, Any]]:
           AND btrim(video_src) <> ''
         ORDER BY upload_date ASC NULLS LAST, id ASC
     """
-    with psycopg.connect(require_database_url(), connect_timeout=30, row_factory=dict_row) as conn:
+    with psycopg.connect(
+        require_database_url(),
+        connect_timeout=30,
+        row_factory=dict_row,
+        prepare_threshold=None,
+    ) as conn:
         with conn.cursor() as cur:
             cur.execute(sql)
             return list(cur.fetchall())
@@ -309,7 +314,11 @@ def update_database_images() -> None:
         seen_ids.add(post_id)
 
     sql = "UPDATE public.blog_posts SET img = %s WHERE id = %s"
-    with psycopg.connect(require_database_url(), connect_timeout=30) as conn:
+    with psycopg.connect(
+        require_database_url(),
+        connect_timeout=30,
+        prepare_threshold=None,
+    ) as conn:
         with conn.cursor() as cur:
             for entry in entries:
                 cur.execute(sql, (entry["img_url"], entry["id"]))
