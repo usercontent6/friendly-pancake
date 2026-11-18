@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:37:23.387513+00:00",
+  "updated_at": "2026-11-18T08:38:17.073305+00:00",
   "total_rows": 1903,
   "next_index": 1160,
   "batches_completed": 24,
-  "generated": 1022,
+  "generated": 1066,
   "resumed": 0,
   "video_failures": [
     {
@@ -835,6 +835,42 @@
       "stage": "ffmpeg",
       "reason": "Video host returned HTTP 404; source file was not found.",
       "recorded_at": "2026-11-18T08:37:08.584748+00:00"
+    },
+    {
+      "post_id": "0adda4b7-0a6a-4f00-9d42-7b52f74ae691",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:37:26.801377+00:00"
+    },
+    {
+      "post_id": "99231f6a-39b2-432e-82fd-5637820f5673",
+      "stage": "ffmpeg",
+      "reason": "Fast seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs. Accurate seek: FFmpeg exited with code 234; raw output suppressed to protect signed video URLs.",
+      "recorded_at": "2026-11-18T08:37:39.450631+00:00"
+    },
+    {
+      "post_id": "0e1399a8-8b5f-4edd-b826-d110dd159120",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:37:49.526264+00:00"
+    },
+    {
+      "post_id": "1d957552-ce80-4078-a1e5-31f58feea69a",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:37:55.012085+00:00"
+    },
+    {
+      "post_id": "13e8276a-fef5-4c41-9e3f-6c05bbc8bf5e",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:37:56.680942+00:00"
+    },
+    {
+      "post_id": "0f5b1a4c-6aa2-4b29-a7c6-aa1bc834fa60",
+      "stage": "ffmpeg",
+      "reason": "Video host returned HTTP 404; source file was not found.",
+      "recorded_at": "2026-11-18T08:37:56.830244+00:00"
     }
   ],
   "history": [
