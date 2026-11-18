@@ -304,9 +304,13 @@ def main() -> int:
 
     video_rows, lookup_failures = fetch_only_failed_video_rows(source_errors)
     pending_by_id = {item["post_id"]: item for item in source_errors}
+    # Keep every CSV row pending until its batch has successfully updated Neon.
+    # This preserves rows belonging to later batches when we save intermediate results.
     still_failing: dict[str, dict[str, str]] = {
-        item["post_id"]: item for item in lookup_failures
+        item["post_id"]: item for item in source_errors
     }
+    for item in lookup_failures:
+        still_failing[item["post_id"]] = item
 
     report: dict[str, Any] = {
         "status": "running",
@@ -442,9 +446,6 @@ def main() -> int:
 
         # Persist successful images before updating Neon. If a database step
         # later fails, another run finds and reuses these validated JPEG files.
-        report["attempted"] += len(batch)
-        report["recovered"] += len(successes)
-        report["still_failing"] = len(still_failing) + len(failed)
         report["batches"].append({
             "batch": (start // BATCH_SIZE) + 1,
             "rows": len(batch),
@@ -452,7 +453,7 @@ def main() -> int:
             "reused": reused,
             "frame_successes": len(successes),
             "video_failures": len(failed),
-            "stage": "frames_ready",
+            "stage": "frames_published_pending_db",
         })
         write_retry_report(report)
         append_history(batch_history)
@@ -462,6 +463,9 @@ def main() -> int:
 
         # Only UUIDs from the original error CSV are passed to this UPDATE.
         updated = update_only_recovered_rows(successes)
+
+        report["attempted"] += len(batch)
+        report["recovered"] += len(successes)
 
         for item in successes:
             recovered_ids.add(item["id"])
