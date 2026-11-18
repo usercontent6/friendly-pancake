@@ -1,11 +1,11 @@
 {
   "version": 1,
   "created_at": "2026-11-18T08:11:44.841688+00:00",
-  "updated_at": "2026-11-18T08:45:38.164421+00:00",
+  "updated_at": "2026-11-18T08:46:09.207311+00:00",
   "total_rows": 1903,
   "next_index": 1510,
   "batches_completed": 31,
-  "generated": 1336,
+  "generated": 1385,
   "resumed": 0,
   "video_failures": [
     {
@@ -1051,6 +1051,12 @@
       "stage": "ffmpeg",
       "reason": "Video host returned HTTP 404; source file was not found.",
       "recorded_at": "2026-11-18T08:45:11.594271+00:00"
+    },
+    {
+      "post_id": "000a2978-0ac5-416e-9c78-c7f753dedaf3",
+      "stage": "source",
+      "reason": "video_src is a relative path; configure the Actions variable VIDEO_BASE_URL",
+      "recorded_at": "2026-11-18T08:45:48.817718+00:00"
     }
   ],
   "history": [
