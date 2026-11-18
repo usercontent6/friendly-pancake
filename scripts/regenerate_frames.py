@@ -300,8 +300,9 @@ def add_failure(report: dict[str, Any], post_id: str, stage: str, reason: str, p
 def write_report(report: dict[str, Any]) -> None:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     report["finished_at"] = datetime.now(timezone.utc).isoformat()
-    report["status"] = "partial" if report.get("generated", 0) and report.get("failures") else (
-        "success" if report.get("generated", 0) else "failed"
+    completed = report.get("generated", 0) + report.get("resumed", 0)
+    report["status"] = "partial" if completed and report.get("failures") else (
+        "success" if completed else "failed"
     )
     REPORT_JSON.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     with REPORT_CSV.open("w", newline="", encoding="utf-8-sig") as handle:
@@ -321,7 +322,8 @@ def write_step_summary(report: dict[str, Any], heading: str) -> None:
         "",
         f"- **Status:** {report.get('status', 'unknown')}",
         f"- **Rows considered:** {report.get('total_rows', 0)}",
-        f"- **Frames generated:** {report.get('generated', 0)}",
+        f"- **Frames generated this run:** {report.get('generated', 0)}",
+        f"- **Frames resumed from checkpoints:** {report.get('resumed', 0)}",
         f"- **Errors recorded:** {len(report.get('failures', []))}",
         f"- **Neon updates:** {database.get('updated', 0)}",
         f"- **Neon update failures:** {database.get('failed', 0)}",
